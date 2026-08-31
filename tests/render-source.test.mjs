@@ -20,6 +20,21 @@ test('fallback renderer protects against CDN failure', () => {
   assert.match(fallback, /cancelAnimationFrame/);
 });
 
+test('main 3D characters use articulated humanoids instead of pawn proxies', () => {
+  assert.match(three, /function createHumanoidCharacter/);
+  assert.match(three, /function poseHumanoid/);
+  assert.match(three, /const player = createHumanoidCharacter/);
+  assert.match(three, /const npc = createHumanoidCharacter/);
+  assert.doesNotMatch(three, /const playerBody\s*=.*CapsuleGeometry/);
+  assert.doesNotMatch(three, /const body\s*=.*DodecahedronGeometry\(size/);
+});
+
+test('Canvas fallback also renders humanoid silhouettes', () => {
+  assert.match(fallback, /function drawHumanoid/);
+  assert.match(fallback, /fallback-2d-humanoid/);
+  assert.match(fallback, /Fallback humanoïde actif/);
+});
+
 test('scene uses original procedural primitives only', () => {
   assert.doesNotMatch(three, /TextureLoader|GLTFLoader|\.png|\.jpg|\.glb|\.gltf/);
   assert.match(three, /CircleGeometry/);
