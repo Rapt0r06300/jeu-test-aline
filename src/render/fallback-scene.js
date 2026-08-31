@@ -1,6 +1,6 @@
 export function createFallbackScene(root, reason = '3D renderer unavailable') {
   const canvas = document.createElement('canvas');
-  canvas.setAttribute('aria-label', 'Fallback visuel de la scène fantasy');
+  canvas.setAttribute('aria-label', 'Fallback visuel de la scène fantasy jouable');
   root.replaceChildren(canvas);
   const ctx = canvas.getContext('2d', { alpha: false });
   let raf = 0;
@@ -8,6 +8,7 @@ export function createFallbackScene(root, reason = '3D renderer unavailable') {
   let width = 1;
   let height = 1;
   let dpr = 1;
+  let latestState = null;
 
   function resize() {
     if (disposed) return;
@@ -19,6 +20,15 @@ export function createFallbackScene(root, reason = '3D renderer unavailable') {
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function worldToScreen(position, center) {
+    const scale = Math.min(width, height) / 46;
+    return {
+      x: width / 2 + (position.x - center.x) * scale,
+      y: height / 2 + (position.z - center.z) * scale,
+      scale,
+    };
   }
 
   function draw(time) {
@@ -44,8 +54,25 @@ export function createFallbackScene(root, reason = '3D renderer unavailable') {
     ctx.closePath();
     ctx.fill();
 
+    if (latestState) {
+      const center = latestState.player.position;
+      for (const enemy of latestState.enemies) {
+        if (enemy.state === 'dead') continue;
+        const point = worldToScreen(enemy.position, center);
+        ctx.beginPath();
+        ctx.fillStyle = enemy.id === latestState.targetId ? '#ffd66f' : '#a84e55';
+        ctx.arc(point.x, point.y, Math.max(7, point.scale * 0.75), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const player = worldToScreen(center, center);
+      ctx.beginPath();
+      ctx.fillStyle = '#75dcff';
+      ctx.arc(player.x, player.y, Math.max(8, player.scale * 0.82), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.fillStyle = 'rgba(111,231,255,.35)';
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 16; i++) {
       const x = (i * 97 + t * 7) % (width + 40) - 20;
       const y = horizon - 30 - (i * 53 % Math.max(80, horizon - 60)) + Math.sin(t * 1.2 + i) * 8;
       ctx.beginPath();
@@ -58,7 +85,6 @@ export function createFallbackScene(root, reason = '3D renderer unavailable') {
     ctx.fillStyle = '#b9cbd7';
     ctx.font = '12px system-ui, sans-serif';
     ctx.fillText(`Fallback actif · ${reason}`, 20, height - 19);
-
     raf = requestAnimationFrame(draw);
   }
 
@@ -69,6 +95,7 @@ export function createFallbackScene(root, reason = '3D renderer unavailable') {
     kind: 'fallback-2d',
     canvas,
     resize,
+    update(state) { latestState = state; },
     stop() { if (raf) cancelAnimationFrame(raf); raf = 0; },
     dispose() {
       disposed = true;

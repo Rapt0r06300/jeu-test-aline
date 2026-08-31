@@ -15,8 +15,7 @@ export function createThreeScene(THREE, root) {
   scene.fog = new THREE.FogExp2(SCENE_CONFIG.colors.fog, SCENE_CONFIG.fogDensity);
 
   const camera = new THREE.PerspectiveCamera(53, 1, 0.1, 240);
-  camera.position.set(22, 14, 28);
-  camera.lookAt(0, 3, 0);
+  camera.position.set(0, 12, 18);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -24,12 +23,10 @@ export function createThreeScene(THREE, root) {
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.domElement.setAttribute('aria-label', 'Scène 3D fantasy');
+  renderer.domElement.setAttribute('aria-label', 'Scène 3D fantasy jouable');
   root.replaceChildren(renderer.domElement);
 
-  const hemi = new THREE.HemisphereLight(0x8fc9ff, 0x172416, 1.45);
-  scene.add(hemi);
-
+  scene.add(new THREE.HemisphereLight(0x8fc9ff, 0x172416, 1.45));
   const sun = new THREE.DirectionalLight(0xffe4b6, 2.4);
   sun.position.set(-28, 44, 22);
   sun.castShadow = true;
@@ -42,7 +39,6 @@ export function createThreeScene(THREE, root) {
 
   const world = new THREE.Group();
   scene.add(world);
-
   const ground = new THREE.Mesh(
     new THREE.CircleGeometry(SCENE_CONFIG.worldRadius, 96),
     new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.ground, roughness: 0.97, metalness: 0.02 }),
@@ -63,15 +59,7 @@ export function createThreeScene(THREE, root) {
   const treeTrunkMat = new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.trunk, roughness: 1 });
   const leavesMat = new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.leaves, roughness: 0.93 });
   const rockMat = new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.stone, roughness: 0.9 });
-  const ruinMat = new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.ruin, roughness: 0.88 });
-  const crystalMat = new THREE.MeshStandardMaterial({
-    color: SCENE_CONFIG.colors.crystal,
-    emissive: 0x1d7689,
-    emissiveIntensity: 1.25,
-    roughness: 0.28,
-    metalness: 0.12,
-  });
-
+  const crystalMat = new THREE.MeshStandardMaterial({ color: SCENE_CONFIG.colors.crystal, emissive: 0x1d7689, emissiveIntensity: 1.25, roughness: 0.28 });
   const trunkGeo = new THREE.CylinderGeometry(0.32, 0.45, 3.3, 7);
   const crownGeo = new THREE.ConeGeometry(1.85, 4.9, 8);
   const rockGeo = new THREE.DodecahedronGeometry(1.1, 0);
@@ -85,8 +73,7 @@ export function createThreeScene(THREE, root) {
   }
 
   for (let i = 0; i < SCENE_CONFIG.treeCount; i++) {
-    const [x, z] = randomRing(14, 65);
-    const scale = 0.72 + rand() * 0.75;
+    const [x, z] = randomRing(15, 65);
     const tree = new THREE.Group();
     const trunk = new THREE.Mesh(trunkGeo, treeTrunkMat);
     trunk.position.y = 1.65;
@@ -96,71 +83,84 @@ export function createThreeScene(THREE, root) {
     crown.castShadow = true;
     tree.add(trunk, crown);
     tree.position.set(x, 0, z);
-    tree.scale.setScalar(scale);
-    tree.rotation.y = rand() * Math.PI;
+    tree.scale.setScalar(0.72 + rand() * 0.7);
     world.add(tree);
   }
 
   for (let i = 0; i < SCENE_CONFIG.rockCount; i++) {
-    const [x, z] = randomRing(8, 63);
+    const [x, z] = randomRing(10, 63);
     const rock = new THREE.Mesh(rockGeo, rockMat);
-    rock.position.set(x, 0.45 + rand() * 0.32, z);
-    rock.scale.set(0.45 + rand() * 1.5, 0.35 + rand() * 0.85, 0.5 + rand() * 1.35);
+    rock.position.set(x, 0.5, z);
+    rock.scale.set(0.45 + rand() * 1.3, 0.35 + rand() * 0.8, 0.5 + rand() * 1.2);
     rock.rotation.set(rand() * 0.8, rand() * Math.PI, rand() * 0.5);
     rock.castShadow = true;
-    rock.receiveShadow = true;
     world.add(rock);
   }
 
   for (let i = 0; i < SCENE_CONFIG.crystalCount; i++) {
-    const [x, z] = randomRing(16, 54);
-    const cluster = new THREE.Group();
-    for (let j = 0; j < 3; j++) {
-      const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-      crystal.position.set((j - 1) * 0.48, 0.75 + j * 0.17, (j % 2) * 0.25);
-      crystal.scale.set(0.5 + j * 0.18, 1.1 + j * 0.36, 0.5 + j * 0.13);
-      crystal.rotation.z = (j - 1) * 0.2;
-      cluster.add(crystal);
-    }
-    cluster.position.set(x, 0, z);
-    world.add(cluster);
+    const [x, z] = randomRing(18, 54);
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.set(x, 1, z);
+    crystal.scale.set(0.7, 1.8, 0.7);
+    world.add(crystal);
   }
 
-  const ruin = new THREE.Group();
-  const altar = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.8, 0.7, 16), ruinMat);
-  altar.position.y = 0.35;
-  altar.receiveShadow = true;
-  ruin.add(altar);
-  for (let i = 0; i < 7; i++) {
-    const angle = (i / 7) * Math.PI * 2;
-    const column = new THREE.Mesh(new THREE.BoxGeometry(0.95, 4 + (i % 3) * 1.1, 0.95), ruinMat);
-    column.position.set(Math.cos(angle) * 7.8, 2 + (i % 3) * 0.55, Math.sin(angle) * 7.8);
-    column.rotation.y = -angle + rand() * 0.25;
-    column.rotation.z = (rand() - 0.5) * 0.16;
-    column.castShadow = true;
-    ruin.add(column);
-  }
-  ruin.position.set(27, 0, -21);
-  world.add(ruin);
-
-  const positions = new Float32Array(SCENE_CONFIG.fireflyCount * 3);
-  for (let i = 0; i < SCENE_CONFIG.fireflyCount; i++) {
-    const [x, z] = randomRing(3, 60);
-    positions[i * 3] = x;
-    positions[i * 3 + 1] = 1 + rand() * 8;
-    positions[i * 3 + 2] = z;
-  }
-  const fireflyGeo = new THREE.BufferGeometry();
-  fireflyGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const fireflies = new THREE.Points(
-    fireflyGeo,
-    new THREE.PointsMaterial({ color: 0xaef9ff, size: 0.12, transparent: true, opacity: 0.8, depthWrite: false }),
+  const player = new THREE.Group();
+  const playerBody = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.58, 1.25, 5, 10),
+    new THREE.MeshStandardMaterial({ color: 0x76d7ff, roughness: 0.42, metalness: 0.12 }),
   );
-  world.add(fireflies);
+  playerBody.position.y = 1.25;
+  playerBody.castShadow = true;
+  const playerMarker = new THREE.Mesh(
+    new THREE.ConeGeometry(0.32, 0.65, 8),
+    new THREE.MeshStandardMaterial({ color: 0xe8fbff, emissive: 0x4ebce8, emissiveIntensity: 0.7 }),
+  );
+  playerMarker.position.set(0, 2.75, 0);
+  player.add(playerBody, playerMarker);
+  scene.add(player);
 
+  const enemyMeshes = new Map();
+  function ensureEnemy(enemy) {
+    if (enemyMeshes.has(enemy.id)) return enemyMeshes.get(enemy.id);
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.95, 1),
+      new THREE.MeshStandardMaterial({ color: enemy.id.startsWith('sentinel') ? 0xb58858 : 0x923e48, roughness: 0.72 }),
+    );
+    body.position.y = 1.05;
+    body.castShadow = true;
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.8, 7), new THREE.MeshStandardMaterial({ color: 0xd7c7a2, roughness: 1 }));
+    horn.position.set(0, 2, 0);
+    group.add(body, horn);
+    scene.add(group);
+    enemyMeshes.set(enemy.id, group);
+    return group;
+  }
+
+  const targetRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.35, 0.09, 8, 40),
+    new THREE.MeshBasicMaterial({ color: 0xffdd73, transparent: true, opacity: 0.92 }),
+  );
+  targetRing.rotation.x = -Math.PI / 2;
+  targetRing.position.y = 0.12;
+  targetRing.visible = false;
+  scene.add(targetRing);
+
+  const effectMaterial = new THREE.MeshBasicMaterial({ color: 0x7cdcff, transparent: true, opacity: 0.78 });
+  const effectRing = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.12, 8, 48), effectMaterial);
+  effectRing.rotation.x = -Math.PI / 2;
+  effectRing.position.y = 0.28;
+  effectRing.visible = false;
+  scene.add(effectRing);
+
+  const actionColors = { basic: 0xffffff, skill1: 0x75d6ff, skill2: 0xb783ff, skill3: 0x79ffc6, skill4: 0xffd16f };
   const clock = new THREE.Clock();
   let raf = 0;
   let disposed = false;
+  let latestState = null;
+  let lastFeedbackKey = '';
+  let effectEndAt = 0;
 
   function resize() {
     if (disposed) return;
@@ -173,13 +173,57 @@ export function createThreeScene(THREE, root) {
     renderer.setSize(width, height, false);
   }
 
+  function update(state) {
+    latestState = state;
+    const feedback = state.feedback;
+    if (feedback?.type === 'player-action') {
+      const key = `${feedback.actionId}:${feedback.targetId}:${feedback.at}`;
+      if (key !== lastFeedbackKey) {
+        lastFeedbackKey = key;
+        effectMaterial.color.setHex(actionColors[feedback.actionId] ?? 0xffffff);
+        effectEndAt = clock.getElapsedTime() + 0.42;
+      }
+    }
+  }
+
   function frame() {
     if (disposed) return;
     const elapsed = clock.getElapsedTime();
-    camera.position.x = 22 + Math.sin(elapsed * 0.055) * 2.6;
-    camera.position.z = 28 + Math.cos(elapsed * 0.055) * 2.6;
-    camera.lookAt(0, 3.1, 0);
-    fireflies.rotation.y = elapsed * 0.018;
+    if (latestState) {
+      const p = latestState.player.position;
+      player.position.x += (p.x - player.position.x) * 0.34;
+      player.position.z += (p.z - player.position.z) * 0.34;
+
+      for (const enemy of latestState.enemies) {
+        const mesh = ensureEnemy(enemy);
+        mesh.visible = enemy.state !== 'dead';
+        mesh.position.x += (enemy.position.x - mesh.position.x) * 0.3;
+        mesh.position.z += (enemy.position.z - mesh.position.z) * 0.3;
+        if (mesh.visible) mesh.rotation.y += 0.003;
+      }
+
+      const target = latestState.enemies.find((enemy) => enemy.id === latestState.targetId && enemy.state !== 'dead');
+      targetRing.visible = Boolean(target);
+      if (target) targetRing.position.set(target.position.x, 0.12, target.position.z);
+
+      if (effectEndAt > elapsed && latestState.feedback?.targetId) {
+        const effectTarget = latestState.enemies.find((enemy) => enemy.id === latestState.feedback.targetId);
+        effectRing.visible = Boolean(effectTarget);
+        if (effectTarget) {
+          const progress = 1 - (effectEndAt - elapsed) / 0.42;
+          effectRing.position.set(effectTarget.position.x, 0.3, effectTarget.position.z);
+          effectRing.scale.setScalar(0.7 + progress * 1.45);
+          effectMaterial.opacity = Math.max(0, 0.8 * (1 - progress));
+        }
+      } else {
+        effectRing.visible = false;
+      }
+
+      const desiredCamera = new THREE.Vector3(player.position.x + 11, 10.5, player.position.z + 15);
+      camera.position.lerp(desiredCamera, 0.08);
+      camera.lookAt(player.position.x, 1.2, player.position.z);
+    }
+
     crystalMat.emissiveIntensity = 1.05 + Math.sin(elapsed * 1.8) * 0.25;
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -210,6 +254,5 @@ export function createThreeScene(THREE, root) {
 
   resize();
   raf = requestAnimationFrame(frame);
-
-  return { kind: 'three-webgl', canvas: renderer.domElement, resize, stop, dispose };
+  return { kind: 'three-webgl', canvas: renderer.domElement, resize, update, stop, dispose };
 }
