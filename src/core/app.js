@@ -1,4 +1,6 @@
 import { APP_CONFIG } from '../data/config.js';
+import { loadLocalSave, saveLocalState } from '../data/local-save.js';
+import { detectBrowserQuality } from '../data/quality.js';
 import {
   clearMoveIntent,
   createInitialGameState,
@@ -14,6 +16,8 @@ import { mountFatalHud, mountGameHud } from '../ui/hud.js';
 
 export function createApp({ sceneRoot, uiRoot }) {
   const state = createInitialGameState(APP_CONFIG.gameplay);
+  state.settings = { quality: 'auto' };
+  state.runtimeQuality = 'medium';
   let scene = null;
   let hud = null;
   let input = null;
@@ -21,6 +25,7 @@ export function createApp({ sceneRoot, uiRoot }) {
   let startToken = 0;
   let gameRaf = 0;
   let lastFrameMs = 0;
+  let autosaveTimer = 0;
 
   const onResize = () => scene?.resize();
 
@@ -29,13 +34,19 @@ export function createApp({ sceneRoot, uiRoot }) {
     hud?.render?.(state, now);
   }
 
+  function persist() {
+    saveLocalState(state);
+  }
+
   function handleInteract() {
-    interact(state, APP_CONFIG.gameplay);
+    const result = interact(state, APP_CONFIG.gameplay);
+    if (result.ok) persist();
     refresh();
   }
 
   function handleEquip(instanceId) {
-    equipItem(state, instanceId, APP_CONFIG.gameplay);
+    const result = equipItem(state, instanceId, APP_CONFIG.gameplay);
+    if (result.ok) persist();
     refresh();
   }
 
@@ -56,8 +67,12 @@ export function createApp({ sceneRoot, uiRoot }) {
     started = true;
     const token = ++startToken;
     state.phase = 'loading';
+    loadLocalSave(state, APP_CONFIG.gameplay);
+    const requestedQuality = state.settings?.quality ?? 'auto';
+    state.runtimeQuality = requestedQuality === 'auto' ? detectBrowserQuality() : requestedQuality;
+
     try {
-      const nextScene = await createSceneSurface(sceneRoot);
+      const nextScene = await createSceneSurface(sceneRoot, { quality: state.runtimeQuality });
       if (!started || token !== startToken) {
         nextScene.dispose();
         return;
@@ -81,6 +96,7 @@ export function createApp({ sceneRoot, uiRoot }) {
       window.addEventListener('orientationchange', onResize, { passive: true });
       lastFrameMs = 0;
       gameRaf = requestAnimationFrame(runGameFrame);
+      autosaveTimer = window.setInterval(persist, 5000);
     } catch (error) {
       state.phase = 'fatal';
       mountFatalHud(uiRoot, error);
@@ -90,10 +106,13 @@ export function createApp({ sceneRoot, uiRoot }) {
 
   function stop() {
     if (!started) return;
+    persist();
     started = false;
     startToken++;
     if (gameRaf) cancelAnimationFrame(gameRaf);
+    if (autosaveTimer) clearInterval(autosaveTimer);
     gameRaf = 0;
+    autosaveTimer = 0;
     lastFrameMs = 0;
     clearMoveIntent(state);
     input?.dispose?.();
@@ -108,5 +127,5 @@ export function createApp({ sceneRoot, uiRoot }) {
     state.phase = 'stopped';
   }
 
-  return { start, stop, state, config: APP_CONFIG, getScene: () => scene };
+  return { start, stop, state, config: APP_CONFIG, persist, getScene: () => scene };
 }

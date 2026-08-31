@@ -39,6 +39,9 @@ jobs:
       - name: Static smoke test
         run: node scripts/smoke-dist.mjs
 
+      - name: Browser smoke desktop and mobile
+        run: node scripts/browser-smoke.mjs
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
