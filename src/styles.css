@@ -15,7 +15,7 @@ body { overscroll-behavior: none; touch-action: none; user-select: none; }
 #scene-root canvas { display: block; width: 100%; height: 100%; }
 #ui-root { position: absolute; inset: 0; pointer-events: none; }
 
-.boot-card, .hud-status, .hud-target, .hud-help {
+.boot-card, .hud-status, .hud-target, .hud-help, .quest-panel, .inventory-panel, .boss-bar {
   border: 1px solid rgba(184, 219, 255, 0.22);
   background: rgba(5, 15, 24, 0.74);
   box-shadow: 0 14px 48px rgba(0, 0, 0, 0.28);
@@ -29,21 +29,48 @@ body { overscroll-behavior: none; touch-action: none; user-select: none; }
 
 .game-hud { position: absolute; inset: 0; }
 .hud-status { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); width: min(310px, calc(100vw - 24px)); padding: 10px 12px; border-radius: 14px; }
-.hud-title-row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+.hud-title-row, .hud-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+.hud-title-row { margin-bottom: 8px; font-size: 13px; }
 .hud-title-row strong { letter-spacing: .03em; }
-.hud-title-row span { color: #c6d6e2; }
+.hud-title-row span, .hud-meta { color: #c6d6e2; }
+.hud-meta { margin-top: 6px; }
 .hud-bar { position: relative; height: 15px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); margin-top: 6px; }
 .hud-bar span { position: absolute; inset: 0 auto 0 0; width: 100%; transition: width .12s linear; }
 .hud-bar.hp span { background: linear-gradient(90deg, #8d2635, #f36c61); }
 .hud-bar.mana span { background: linear-gradient(90deg, #2457a6, #65c7ff); }
+.hud-bar.boss span { background: linear-gradient(90deg, #8e311f, #ffbe5c); }
 .hud-bar em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 10px; font-style: normal; text-shadow: 0 1px 3px #000; }
-.hud-xp { margin-top: 6px; font-size: 11px; color: #c9d8e5; }
 
 .hud-target { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); min-width: 220px; max-width: 45vw; padding: 8px 14px; border-radius: 14px; text-align: center; }
 .hud-target span, .hud-target small { display: block; color: #aebfcc; font-size: 10px; }
 .hud-target strong { display: block; margin: 2px 0; font-size: 14px; }
 .hud-target.empty { opacity: .65; }
+
+.boss-bar { position: absolute; top: max(76px, calc(env(safe-area-inset-top) + 64px)); left: 50%; transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); padding: 9px 13px; border-radius: 14px; text-align: center; border-color: rgba(255,186,98,.42); }
+.boss-bar[hidden] { display: none; }
+.boss-bar > div:first-child { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.boss-bar > div:first-child span { color: #ffbe75; font-weight: 800; }
+.boss-bar small { display: block; min-height: 13px; margin-top: 4px; color: #ffbc8a; font-size: 10px; }
+
+.quest-panel { position: absolute; left: max(12px, env(safe-area-inset-left)); top: max(118px, calc(env(safe-area-inset-top) + 106px)); width: min(300px, calc(100vw - 24px)); padding: 9px 11px; border-radius: 12px; }
+.quest-panel strong, .quest-panel span { display: block; }
+.quest-panel strong { margin-bottom: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #8fcde8; }
+.quest-panel span { font-size: 11px; color: #d6e3ec; }
+
+.inventory-panel { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(76px, calc(env(safe-area-inset-top) + 64px)); width: min(250px, 33vw); max-height: 34vh; padding: 8px; border-radius: 13px; overflow: auto; pointer-events: auto; }
+.inventory-panel header { display: flex; justify-content: space-between; margin-bottom: 5px; color: #d9e8f3; font-size: 10px; }
+.inventory-item { width: 100%; display: block; margin-top: 5px; padding: 6px 7px; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; color: #eaf5fb; background: rgba(15,31,42,.82); text-align: left; }
+.inventory-item strong, .inventory-item small { display: block; }
+.inventory-item strong { font-size: 9px; }
+.inventory-item small { margin-top: 2px; font-size: 8px; color: #b4c7d4; }
+.inventory-item.equipped { outline: 1px solid #7cdcff; }
+.inventory-item.rarity-rare { border-color: rgba(102,160,255,.5); }
+.inventory-item.rarity-epic { border-color: rgba(191,112,255,.65); }
+.inventory-empty { margin: 4px 0; font-size: 9px; color: #8da2b1; }
+
 .hud-help { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); padding: 8px 10px; border-radius: 12px; color: #c9d8e5; font-size: 10px; }
+.interact-button { position: absolute; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px)); transform: translateX(-50%); pointer-events: auto; min-width: 112px; padding: 10px 14px; border: 1px solid rgba(186,226,255,.35); border-radius: 999px; color: #eaf8ff; background: rgba(15,45,61,.84); box-shadow: 0 8px 28px rgba(0,0,0,.3); }
+.interact-button small { margin-left: 6px; color: #a9d9f2; }
 
 .move-stick { --stick-x: 0px; --stick-y: 0px; position: absolute; left: max(22px, calc(env(safe-area-inset-left) + 14px)); bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px)); width: 132px; height: 132px; border-radius: 50%; pointer-events: auto; touch-action: none; border: 1px solid rgba(188,224,255,.34); background: radial-gradient(circle, rgba(97,151,190,.2), rgba(7,17,26,.38)); box-shadow: inset 0 0 32px rgba(124,201,255,.08); }
 .move-stick::after { content: ''; position: absolute; inset: 38%; border-radius: 50%; background: rgba(255,255,255,.09); }
@@ -57,32 +84,47 @@ body { overscroll-behavior: none; touch-action: none; user-select: none; }
 .action-button i { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 20px; background: rgba(2,8,12,.62); opacity: 0; }
 .action-button.unavailable { filter: saturate(.55); }
 .action-button.unavailable i:not(:empty) { opacity: 1; }
-.action-button:active { transform: scale(.96); }
+.action-button:active, .interact-button:active, .inventory-item:active { transform: scale(.96); }
+.interact-button:active { transform: translateX(-50%) scale(.96); }
+
+.feedback-toast { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%) scale(.94); max-width: min(420px, calc(100vw - 30px)); padding: 10px 14px; border-radius: 12px; color: #fff6df; background: rgba(19,16,12,.86); border: 1px solid rgba(255,213,133,.4); opacity: 0; transition: opacity .15s, transform .15s; text-align: center; font-weight: 800; font-size: 12px; }
+.feedback-toast.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
 @media (max-width: 700px) {
   .hud-help { display: none; }
   .hud-target { top: max(96px, calc(env(safe-area-inset-top) + 84px)); min-width: 190px; max-width: calc(100vw - 34px); }
+  .boss-bar { top: max(148px, calc(env(safe-area-inset-top) + 136px)); width: calc(100vw - 28px); }
   .hud-status { width: min(270px, calc(100vw - 24px)); }
+  .quest-panel { top: auto; bottom: max(154px, calc(env(safe-area-inset-bottom) + 145px)); width: min(220px, 58vw); }
+  .inventory-panel { top: auto; right: 8px; bottom: max(158px, calc(env(safe-area-inset-bottom) + 150px)); width: min(190px, 48vw); max-height: 145px; }
   .action-dock { grid-template-columns: repeat(3, 58px); gap: 7px; }
   .action-button { min-height: 54px; border-radius: 14px; padding: 5px; }
   .action-button:first-child { min-height: 115px; }
   .move-stick { width: 116px; height: 116px; }
+  .interact-button { bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px)); min-width: 94px; padding: 8px 10px; font-size: 10px; }
 }
 
 @media (max-width: 370px) {
   .hud-status { width: 224px; padding: 8px 9px; }
   .hud-target { top: 100px; }
+  .boss-bar { top: 150px; }
   .move-stick { width: 102px; height: 102px; left: 10px; bottom: 12px; }
   .action-dock { right: 10px; bottom: 12px; grid-template-columns: repeat(3, 50px); gap: 5px; }
   .action-button { min-height: 48px; }
   .action-button:first-child { min-height: 101px; }
   .action-button span { font-size: 8px; }
+  .quest-panel { bottom: 122px; }
+  .inventory-panel { bottom: 122px; }
 }
 
 @media (max-height: 460px) and (orientation: landscape) {
   .hud-status { width: 235px; padding: 7px 9px; }
   .hud-target { top: 8px; min-width: 190px; }
+  .boss-bar { top: 58px; width: 320px; }
+  .quest-panel { display: none; }
+  .inventory-panel { top: 8px; bottom: auto; max-height: 110px; width: 180px; }
   .move-stick { width: 92px; height: 92px; bottom: 8px; }
   .action-dock { bottom: 8px; grid-template-columns: repeat(5, 56px); }
   .action-button, .action-button:first-child { grid-row: auto; min-height: 52px; }
+  .interact-button { bottom: 8px; }
 }

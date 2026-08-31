@@ -5,7 +5,7 @@ const MOVEMENT_KEYS = Object.freeze({
   KeyD: [1, 0], ArrowRight: [1, 0],
 });
 
-export function createInputController({ joystick, actionButtons, actionConfig, onAction }) {
+export function createInputController({ joystick, actionButtons, actionConfig, onAction, onInteract }) {
   const pressed = new Set();
   let touchVector = { x: 0, z: 0 };
   let activePointer = null;
@@ -41,6 +41,11 @@ export function createInputController({ joystick, actionButtons, actionConfig, o
   function onKeyDown(event) {
     if (MOVEMENT_KEYS[event.code]) {
       pressed.add(event.code);
+      event.preventDefault();
+      return;
+    }
+    if (event.code === 'KeyE' && !event.repeat) {
+      onInteract?.();
       event.preventDefault();
       return;
     }

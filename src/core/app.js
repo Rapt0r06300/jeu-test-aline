@@ -2,6 +2,8 @@ import { APP_CONFIG } from '../data/config.js';
 import {
   clearMoveIntent,
   createInitialGameState,
+  equipItem,
+  interact,
   setMoveIntent,
   stepGame,
   tryAction,
@@ -22,6 +24,21 @@ export function createApp({ sceneRoot, uiRoot }) {
 
   const onResize = () => scene?.resize();
 
+  function refresh(now = state.time) {
+    scene?.update?.(state);
+    hud?.render?.(state, now);
+  }
+
+  function handleInteract() {
+    interact(state, APP_CONFIG.gameplay);
+    refresh();
+  }
+
+  function handleEquip(instanceId) {
+    equipItem(state, instanceId, APP_CONFIG.gameplay);
+    refresh();
+  }
+
   function runGameFrame(frameMs) {
     if (!started) return;
     const now = frameMs / 1000;
@@ -30,8 +47,7 @@ export function createApp({ sceneRoot, uiRoot }) {
     const movement = input?.sampleMovement() ?? { x: 0, z: 0 };
     setMoveIntent(state, movement.x, movement.z);
     stepGame(state, dt, now, APP_CONFIG.gameplay);
-    scene?.update?.(state);
-    hud?.render?.(state, now);
+    refresh(now);
     gameRaf = requestAnimationFrame(runGameFrame);
   }
 
@@ -47,21 +63,20 @@ export function createApp({ sceneRoot, uiRoot }) {
         return;
       }
       scene = nextScene;
-      hud = mountGameHud(uiRoot, APP_CONFIG);
+      hud = mountGameHud(uiRoot, APP_CONFIG, { onInteract: handleInteract, onEquip: handleEquip });
       input = createInputController({
         joystick: hud.joystick,
         actionButtons: hud.actionButtons,
         actionConfig: APP_CONFIG.gameplay.actions,
         onAction(actionId) {
           tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
-          scene?.update?.(state);
-          hud?.render?.(state, state.time);
+          refresh();
         },
+        onInteract: handleInteract,
       });
       state.phase = 'ready';
       state.renderer = scene.kind;
-      scene.update?.(state);
-      hud.render?.(state, 0);
+      refresh(0);
       window.addEventListener('resize', onResize, { passive: true });
       window.addEventListener('orientationchange', onResize, { passive: true });
       lastFrameMs = 0;

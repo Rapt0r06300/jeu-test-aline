@@ -16,7 +16,6 @@ export function createThreeScene(THREE, root) {
 
   const camera = new THREE.PerspectiveCamera(53, 1, 0.1, 240);
   camera.position.set(0, 12, 18);
-
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -31,10 +30,6 @@ export function createThreeScene(THREE, root) {
   sun.position.set(-28, 44, 22);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.left = -55;
-  sun.shadow.camera.right = 55;
-  sun.shadow.camera.top = 55;
-  sun.shadow.camera.bottom = -55;
   scene.add(sun);
 
   const world = new THREE.Group();
@@ -105,17 +100,33 @@ export function createThreeScene(THREE, root) {
     world.add(crystal);
   }
 
+  const poiColors = [0x69d7ff, 0xb7d384, 0xe2a968, 0xffc15f];
+  Object.values(APP_CONFIG.gameplay.world.points).forEach((poi, index) => {
+    const marker = new THREE.Mesh(
+      new THREE.CylinderGeometry(index === 3 ? 6.5 : 3.2, index === 3 ? 6.7 : 3.35, 0.18, 32),
+      new THREE.MeshStandardMaterial({ color: poiColors[index], transparent: true, opacity: index === 3 ? 0.22 : 0.12, roughness: 0.8 }),
+    );
+    marker.position.set(poi.x, 0.1, poi.z);
+    marker.receiveShadow = true;
+    world.add(marker);
+  });
+
+  const npcConfig = APP_CONFIG.gameplay.world.npc;
+  const npc = new THREE.Group();
+  const npcBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.15, 4, 8), new THREE.MeshStandardMaterial({ color: 0x6e7ec7, roughness: 0.58 }));
+  npcBody.position.y = 1.15;
+  const npcHalo = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.05, 8, 28), new THREE.MeshBasicMaterial({ color: 0x9adfff }));
+  npcHalo.rotation.x = -Math.PI / 2;
+  npcHalo.position.y = 0.1;
+  npc.add(npcBody, npcHalo);
+  npc.position.set(npcConfig.x, 0, npcConfig.z);
+  world.add(npc);
+
   const player = new THREE.Group();
-  const playerBody = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.58, 1.25, 5, 10),
-    new THREE.MeshStandardMaterial({ color: 0x76d7ff, roughness: 0.42, metalness: 0.12 }),
-  );
+  const playerBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.58, 1.25, 5, 10), new THREE.MeshStandardMaterial({ color: 0x76d7ff, roughness: 0.42, metalness: 0.12 }));
   playerBody.position.y = 1.25;
   playerBody.castShadow = true;
-  const playerMarker = new THREE.Mesh(
-    new THREE.ConeGeometry(0.32, 0.65, 8),
-    new THREE.MeshStandardMaterial({ color: 0xe8fbff, emissive: 0x4ebce8, emissiveIntensity: 0.7 }),
-  );
+  const playerMarker = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.65, 8), new THREE.MeshStandardMaterial({ color: 0xe8fbff, emissive: 0x4ebce8, emissiveIntensity: 0.7 }));
   playerMarker.position.set(0, 2.75, 0);
   player.add(playerBody, playerMarker);
   scene.add(player);
@@ -124,24 +135,22 @@ export function createThreeScene(THREE, root) {
   function ensureEnemy(enemy) {
     if (enemyMeshes.has(enemy.id)) return enemyMeshes.get(enemy.id);
     const group = new THREE.Group();
+    const size = enemy.isBoss ? 1.75 : 0.95;
     const body = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.95, 1),
-      new THREE.MeshStandardMaterial({ color: enemy.id.startsWith('sentinel') ? 0xb58858 : 0x923e48, roughness: 0.72 }),
+      new THREE.DodecahedronGeometry(size, 1),
+      new THREE.MeshStandardMaterial({ color: enemy.isBoss ? 0xd27838 : enemy.id.startsWith('sentinel') ? 0xb58858 : 0x923e48, roughness: 0.72, emissive: enemy.isBoss ? 0x4f1b08 : 0x000000, emissiveIntensity: enemy.isBoss ? 0.45 : 0 }),
     );
-    body.position.y = 1.05;
+    body.position.y = enemy.isBoss ? 1.85 : 1.05;
     body.castShadow = true;
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.8, 7), new THREE.MeshStandardMaterial({ color: 0xd7c7a2, roughness: 1 }));
-    horn.position.set(0, 2, 0);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(enemy.isBoss ? 0.55 : 0.25, enemy.isBoss ? 1.4 : 0.8, 7), new THREE.MeshStandardMaterial({ color: 0xd7c7a2, roughness: 1 }));
+    horn.position.set(0, enemy.isBoss ? 3.7 : 2, 0);
     group.add(body, horn);
     scene.add(group);
     enemyMeshes.set(enemy.id, group);
     return group;
   }
 
-  const targetRing = new THREE.Mesh(
-    new THREE.TorusGeometry(1.35, 0.09, 8, 40),
-    new THREE.MeshBasicMaterial({ color: 0xffdd73, transparent: true, opacity: 0.92 }),
-  );
+  const targetRing = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.09, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffdd73, transparent: true, opacity: 0.92 }));
   targetRing.rotation.x = -Math.PI / 2;
   targetRing.position.y = 0.12;
   targetRing.visible = false;
@@ -153,6 +162,12 @@ export function createThreeScene(THREE, root) {
   effectRing.position.y = 0.28;
   effectRing.visible = false;
   scene.add(effectRing);
+
+  const bossTelegraph = new THREE.Mesh(new THREE.RingGeometry(2.1, 4.8, 56), new THREE.MeshBasicMaterial({ color: 0xff5d3f, transparent: true, opacity: 0.28, side: THREE.DoubleSide }));
+  bossTelegraph.rotation.x = -Math.PI / 2;
+  bossTelegraph.position.y = 0.09;
+  bossTelegraph.visible = false;
+  scene.add(bossTelegraph);
 
   const actionColors = { basic: 0xffffff, skill1: 0x75d6ff, skill2: 0xb783ff, skill3: 0x79ffc6, skill4: 0xffd16f };
   const clock = new THREE.Clock();
@@ -193,18 +208,22 @@ export function createThreeScene(THREE, root) {
       const p = latestState.player.position;
       player.position.x += (p.x - player.position.x) * 0.34;
       player.position.z += (p.z - player.position.z) * 0.34;
+      player.visible = latestState.player.hp > 0;
 
       for (const enemy of latestState.enemies) {
         const mesh = ensureEnemy(enemy);
         mesh.visible = enemy.state !== 'dead';
         mesh.position.x += (enemy.position.x - mesh.position.x) * 0.3;
         mesh.position.z += (enemy.position.z - mesh.position.z) * 0.3;
-        if (mesh.visible) mesh.rotation.y += 0.003;
+        if (mesh.visible) mesh.rotation.y += enemy.isBoss ? 0.0015 : 0.003;
       }
 
       const target = latestState.enemies.find((enemy) => enemy.id === latestState.targetId && enemy.state !== 'dead');
       targetRing.visible = Boolean(target);
-      if (target) targetRing.position.set(target.position.x, 0.12, target.position.z);
+      if (target) {
+        targetRing.scale.setScalar(target.isBoss ? 1.8 : 1);
+        targetRing.position.set(target.position.x, 0.12, target.position.z);
+      }
 
       if (effectEndAt > elapsed && latestState.feedback?.targetId) {
         const effectTarget = latestState.enemies.find((enemy) => enemy.id === latestState.feedback.targetId);
@@ -212,11 +231,17 @@ export function createThreeScene(THREE, root) {
         if (effectTarget) {
           const progress = 1 - (effectEndAt - elapsed) / 0.42;
           effectRing.position.set(effectTarget.position.x, 0.3, effectTarget.position.z);
-          effectRing.scale.setScalar(0.7 + progress * 1.45);
+          effectRing.scale.setScalar((effectTarget.isBoss ? 1.4 : 0.7) + progress * 1.45);
           effectMaterial.opacity = Math.max(0, 0.8 * (1 - progress));
         }
-      } else {
-        effectRing.visible = false;
+      } else effectRing.visible = false;
+
+      const boss = latestState.enemies.find((enemy) => enemy.id === APP_CONFIG.gameplay.boss.id);
+      bossTelegraph.visible = Boolean(boss && boss.state !== 'dead' && boss.pendingDamageAt > latestState.time);
+      if (bossTelegraph.visible) {
+        bossTelegraph.position.set(boss.position.x, 0.09, boss.position.z);
+        const pulse = 0.92 + Math.sin(elapsed * 18) * 0.08;
+        bossTelegraph.scale.setScalar(boss.phase === 'enraged' ? 1.25 * pulse : pulse);
       }
 
       const desiredCamera = new THREE.Vector3(player.position.x + 11, 10.5, player.position.z + 15);
@@ -224,29 +249,19 @@ export function createThreeScene(THREE, root) {
       camera.lookAt(player.position.x, 1.2, player.position.z);
     }
 
+    npcHalo.rotation.z = elapsed * 0.35;
     crystalMat.emissiveIntensity = 1.05 + Math.sin(elapsed * 1.8) * 0.25;
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
 
-  function stop() {
-    if (raf) cancelAnimationFrame(raf);
-    raf = 0;
-  }
-
-  function disposeMaterial(material) {
-    if (Array.isArray(material)) material.forEach(disposeMaterial);
-    else material?.dispose?.();
-  }
-
+  function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; }
+  function disposeMaterial(material) { if (Array.isArray(material)) material.forEach(disposeMaterial); else material?.dispose?.(); }
   function dispose() {
     if (disposed) return;
     disposed = true;
     stop();
-    scene.traverse((object) => {
-      object.geometry?.dispose?.();
-      disposeMaterial(object.material);
-    });
+    scene.traverse((object) => { object.geometry?.dispose?.(); disposeMaterial(object.material); });
     renderer.dispose();
     renderer.forceContextLoss?.();
     root.replaceChildren();
