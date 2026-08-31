@@ -71,8 +71,11 @@ if (!externalUrl) {
 
 try {
   await waitForServer();
-  await runViewport(chrome, externalUrl ? 'public-desktop' : 'desktop', 1440, 900);
-  await runViewport(chrome, externalUrl ? 'public-mobile' : 'mobile', 390, 844);
+  const prefix = externalUrl ? 'public-' : '';
+  await runViewport(chrome, `${prefix}desktop`, 1440, 900);
+  await runViewport(chrome, `${prefix}mobile`, 390, 844);
+  await runViewport(chrome, `${prefix}mobile-narrow`, 320, 568);
+  await runViewport(chrome, `${prefix}mobile-landscape`, 844, 390);
 } finally {
   server?.kill('SIGTERM');
 }
