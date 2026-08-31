@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const workflow = readFileSync('.github/workflows/pages.yml', 'utf8');
+const browserSmoke = readFileSync('scripts/browser-smoke.mjs', 'utf8');
 
 test('Pages workflow runs all quality gates before deploy', () => {
   const unitIndex = workflow.indexOf('npm test');
@@ -19,6 +20,19 @@ test('Pages workflow runs all quality gates before deploy', () => {
   assert.ok(staticIndex < browserIndex);
   assert.ok(browserIndex < configureIndex);
   assert.ok(configureIndex < deployIndex);
+});
+
+test('Pages workflow smoke tests the deployed public URL after deploy', () => {
+  const deployIndex = workflow.indexOf('actions/deploy-pages@v4');
+  const publicSmokeIndex = workflow.indexOf('public-smoke:');
+  const smokeUrlIndex = workflow.indexOf('SMOKE_URL:');
+  assert.ok(publicSmokeIndex > deployIndex, 'public-smoke must run after deploy job definition');
+  assert.ok(smokeUrlIndex > publicSmokeIndex, 'public smoke must receive the deployed page URL');
+  assert.match(workflow, /needs: deploy/);
+  assert.match(workflow, /needs\.deploy\.outputs\.page_url/);
+  assert.match(browserSmoke, /process\.env\.SMOKE_URL/);
+  assert.match(browserSmoke, /public-desktop/);
+  assert.match(browserSmoke, /public-mobile/);
 });
 
 test('Pages workflow has minimum deployment permissions', () => {
