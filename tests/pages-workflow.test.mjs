@@ -31,8 +31,16 @@ test('Pages workflow smoke tests the deployed public URL after deploy', () => {
   assert.match(workflow, /needs: deploy/);
   assert.match(workflow, /needs\.deploy\.outputs\.page_url/);
   assert.match(browserSmoke, /process\.env\.SMOKE_URL/);
-  assert.match(browserSmoke, /public-desktop/);
-  assert.match(browserSmoke, /public-mobile/);
+  assert.match(browserSmoke, /const prefix = externalUrl \? 'public-' : ''/);
+});
+
+test('browser smoke covers desktop, mobile, narrow mobile and landscape', () => {
+  assert.match(browserSmoke, /1440, 900/);
+  assert.match(browserSmoke, /390, 844/);
+  assert.match(browserSmoke, /320, 568/);
+  assert.match(browserSmoke, /844, 390/);
+  assert.match(browserSmoke, /mobile-narrow/);
+  assert.match(browserSmoke, /mobile-landscape/);
 });
 
 test('Pages workflow has minimum deployment permissions', () => {
