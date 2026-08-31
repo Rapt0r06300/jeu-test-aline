@@ -1,0 +1,20 @@
+export const SCENE_CONFIG = Object.freeze({
+  threeUrl: 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js',
+  worldRadius: 72,
+  fogDensity: 0.016,
+  treeCount: 42,
+  rockCount: 34,
+  crystalCount: 9,
+  fireflyCount: 160,
+  colors: Object.freeze({
+    sky: 0x0a1b29,
+    fog: 0x173329,
+    ground: 0x243c2a,
+    path: 0x6a5a43,
+    trunk: 0x4a3326,
+    leaves: 0x1f5b3f,
+    stone: 0x57636a,
+    crystal: 0x6fe7ff,
+    ruin: 0x6b7479,
+  }),
+});
