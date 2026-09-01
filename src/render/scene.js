@@ -18,6 +18,10 @@ async function importWithTimeout(url, timeoutMs) {
 }
 
 export async function createSceneSurface(root, options = {}) {
+  if (options.forceFallback) {
+    return createFallbackScene(root, 'mode validation locale');
+  }
+
   const timeoutMs = Number.isFinite(options.threeBootTimeoutMs)
     ? Math.max(250, options.threeBootTimeoutMs)
     : DEFAULT_THREE_BOOT_TIMEOUT_MS;
