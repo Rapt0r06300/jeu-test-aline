@@ -50,7 +50,8 @@ test('objective danger and reward hierarchy is explicit and not color-only in te
   assert.match(hud, /RÉCOMPENSE/);
   assert.match(hud, /dataset\.uiState = isDanger \? 'danger'/);
   assert.match(hud, /Télégraphe actif — éloignez-vous/);
-  assert.match(hud, /Gardien vaincu ! Récompense finale obtenue/);
+  assert.match(hud, /Gardien vaincu ! Le sanctuaire se stabilise/);
+  assert.match(hud, /'boss-victory': \{ label: .*tone: 'reward' \}/);
 });
 
 test('first-session CSS delegates controls to shared tokens and keeps 44px touch targets', () => {
