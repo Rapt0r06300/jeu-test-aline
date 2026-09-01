@@ -21,6 +21,15 @@ import { createInputController } from '../gameplay/input.js';
 import { createSceneSurface } from '../render/scene.js';
 import { mountFatalHud, mountGameHud } from '../ui/hud.js';
 
+function getRuntimeSceneOptions(quality) {
+  const search = globalThis.location?.search ?? '';
+  const params = new URLSearchParams(search);
+  return {
+    quality,
+    forceFallback: params.get('renderer') === 'fallback',
+  };
+}
+
 export function createApp({ sceneRoot, uiRoot }) {
   const state = createInitialGameState(APP_CONFIG.gameplay);
   state.settings = { quality: 'auto' };
@@ -105,7 +114,7 @@ export function createApp({ sceneRoot, uiRoot }) {
     state.runtimeQuality = requestedQuality === 'auto' ? detectBrowserQuality() : requestedQuality;
 
     try {
-      const nextScene = await createSceneSurface(sceneRoot, { quality: state.runtimeQuality });
+      const nextScene = await createSceneSurface(sceneRoot, getRuntimeSceneOptions(state.runtimeQuality));
       if (!started || token !== startToken) {
         nextScene.dispose();
         return;
@@ -123,10 +132,8 @@ export function createApp({ sceneRoot, uiRoot }) {
         actionButtons: hud.actionButtons,
         actionConfig: APP_CONFIG.gameplay.actions,
         onAction(actionId) {
-          const result = tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
-          const directorChanged = syncDirector();
-          if (result.ok && directorChanged) persist();
-          else if (directorChanged) persist();
+          tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
+          if (syncDirector()) persist();
           refresh();
         },
         onInteract: handleInteract,
