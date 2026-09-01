@@ -1,4 +1,5 @@
 import { restoreFirstSessionState } from './first-session.js';
+import { ensureNarrativeState } from './intro-sequence.js';
 import { recomputePlayerStats } from './state.js';
 
 export const SAVE_VERSION = 1;
@@ -24,6 +25,7 @@ export function createSaveSnapshot(state) {
     nextItemSerial: state.nextItemSerial,
     settings: cloneRecord(state.settings ?? { quality: 'auto' }),
     firstSession: state.firstSession ? cloneRecord(state.firstSession) : null,
+    narrative: cloneRecord(ensureNarrativeState(state)),
   };
 }
 
@@ -95,6 +97,19 @@ export function applySaveSnapshot(state, snapshot, config) {
   state.nextItemSerial = Math.max(1, Math.floor(Number(snapshot.nextItemSerial) || 1));
   state.settings = { quality: ['auto', 'low', 'medium', 'high'].includes(snapshot.settings?.quality) ? snapshot.settings.quality : 'auto' };
   restoreFirstSessionState(state, snapshot.firstSession, config);
+
+  const introWasCompletedByDirector = state.firstSession?.completedStepIds?.includes('intro') ?? false;
+  const savedNarrative = snapshot.narrative && typeof snapshot.narrative === 'object' ? snapshot.narrative : {};
+  state.narrative = {
+    introComplete: Boolean(savedNarrative.introComplete || introWasCompletedByDirector),
+    elyraActive: Boolean(savedNarrative.elyraActive || introWasCompletedByDirector),
+    objectiveId: typeof savedNarrative.objectiveId === 'string'
+      ? savedNarrative.objectiveId
+      : introWasCompletedByDirector ? 'reach_sanctuary' : null,
+    artifactClaimed: Boolean(savedNarrative.artifactClaimed),
+  };
+  ensureNarrativeState(state);
+
   recomputePlayerStats(state, config);
   state.player.hp = state.player.maxHp;
   state.player.mana = state.player.maxMana;
