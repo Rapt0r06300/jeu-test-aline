@@ -17,18 +17,19 @@ window.__JTA_PRESENTATION_READY__ = true;
 window.__JTA_READY__ = false;
 window.__JTA_RENDERER__ = 'pending';
 
-const params = new URLSearchParams(globalThis.location?.search ?? '');
-if (params.get('autostart') === '1') {
-  await presentation.autostart();
+function publishReady() {
   window.__JTA_READY__ = app.state.phase === 'ready';
   window.__JTA_RENDERER__ = app.state.renderer ?? 'unknown';
   window.dispatchEvent(new CustomEvent('jta:ready', { detail: { renderer: window.__JTA_RENDERER__ } }));
 }
 
-window.addEventListener('jta:session-ready', () => {
-  window.__JTA_READY__ = app.state.phase === 'ready';
-  window.__JTA_RENDERER__ = app.state.renderer ?? 'unknown';
-}, { passive: true });
+const params = new URLSearchParams(globalThis.location?.search ?? '');
+if (params.get('autostart') === '1') {
+  await presentation.autostart();
+  publishReady();
+}
+
+window.addEventListener('jta:session-ready', publishReady, { passive: true });
 
 window.addEventListener('pagehide', () => {
   presentation.unmount();
