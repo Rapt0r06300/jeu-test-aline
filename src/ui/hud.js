@@ -1,3 +1,5 @@
+import { getFirstSessionView } from '../gameplay/first-session.js';
+
 function percent(value, max) {
   if (!max) return 0;
   return Math.max(0, Math.min(100, (value / max) * 100));
@@ -30,6 +32,16 @@ export function mountGameHud(root, config, handlers = {}) {
       <div><strong data-boss-name></strong><span data-boss-phase></span></div>
       <div class="hud-bar boss"><span data-boss-fill></span><em data-boss-hp></em></div>
       <small data-boss-warning></small>
+    </section>
+    <section class="guide-panel" data-guide aria-live="polite">
+      <header><span data-guide-kind>PROLOGUE</span><b data-guide-progress></b></header>
+      <strong data-guide-title></strong>
+      <p data-guide-objective></p>
+      <div class="guide-actions">
+        <button type="button" data-guide-advance>Continuer</button>
+        <button type="button" data-guide-skip>Passer</button>
+        <button type="button" data-guide-replay>Rejouer</button>
+      </div>
     </section>
     <section class="quest-panel"><strong>Quête</strong><span data-quest></span></section>
     <section class="inventory-panel">
@@ -72,12 +84,22 @@ export function mountGameHud(root, config, handlers = {}) {
   const bossFill = shell.querySelector('[data-boss-fill]');
   const bossHp = shell.querySelector('[data-boss-hp]');
   const bossWarning = shell.querySelector('[data-boss-warning]');
+  const guideKind = shell.querySelector('[data-guide-kind]');
+  const guideProgress = shell.querySelector('[data-guide-progress]');
+  const guideTitle = shell.querySelector('[data-guide-title]');
+  const guideObjective = shell.querySelector('[data-guide-objective]');
+  const guideAdvance = shell.querySelector('[data-guide-advance]');
+  const guideSkip = shell.querySelector('[data-guide-skip]');
+  const guideReplay = shell.querySelector('[data-guide-replay]');
   const feedbackToast = shell.querySelector('[data-feedback]');
   const actionButtons = Object.fromEntries([...shell.querySelectorAll('[data-action]')].map((button) => [button.dataset.action, button]));
   let lastInventorySignature = '';
   let lastFeedbackKey = '';
 
   const onInteract = (event) => { event.preventDefault(); handlers.onInteract?.(); };
+  const onGuideAdvance = (event) => { event.preventDefault(); handlers.onFirstSessionAdvance?.(); };
+  const onGuideSkip = (event) => { event.preventDefault(); handlers.onFirstSessionSkip?.(); };
+  const onGuideReplay = (event) => { event.preventDefault(); handlers.onFirstSessionReplay?.(); };
   const onInventoryClick = (event) => {
     const button = event.target.closest?.('[data-equip]');
     if (!button) return;
@@ -85,6 +107,9 @@ export function mountGameHud(root, config, handlers = {}) {
     handlers.onEquip?.(button.dataset.equip);
   };
   interactButton.addEventListener('pointerdown', onInteract);
+  guideAdvance.addEventListener('pointerdown', onGuideAdvance);
+  guideSkip.addEventListener('pointerdown', onGuideSkip);
+  guideReplay.addEventListener('pointerdown', onGuideReplay);
   inventory.addEventListener('pointerdown', onInventoryClick);
 
   function renderInventory(state) {
@@ -100,9 +125,20 @@ export function mountGameHud(root, config, handlers = {}) {
     }).join('') : '<p class="inventory-empty">Aucun objet</p>';
   }
 
+  function renderGuide(state) {
+    const guide = getFirstSessionView(state, config.gameplay);
+    guideKind.textContent = guide.kind === 'boss' ? 'OBJECTIF MAJEUR' : guide.kind === 'presentation' ? 'RÉCIT' : 'PROLOGUE';
+    guideProgress.textContent = guide.progressLabel;
+    guideTitle.textContent = guide.title;
+    guideObjective.textContent = guide.replayRequested ? `${guide.objective} · Relecture demandée` : guide.objective;
+    guideAdvance.hidden = !guide.manual;
+    guideSkip.hidden = !guide.skippable;
+    guideReplay.hidden = !guide.replayable;
+  }
+
   function renderFeedback(state) {
     const feedback = state.feedback;
-    const key = feedback ? `${feedback.type}:${feedback.at}:${feedback.actionId ?? ''}` : '';
+    const key = feedback ? `${feedback.type}:${feedback.at}:${feedback.actionId ?? ''}:${feedback.stepId ?? ''}` : '';
     if (!feedback || key === lastFeedbackKey) return;
     lastFeedbackKey = key;
     const labels = {
@@ -113,6 +149,9 @@ export function mountGameHud(root, config, handlers = {}) {
       'boss-victory': 'Gardien vaincu ! Récompense finale obtenue.',
       'player-defeated': 'Vous êtes tombé · retour au sanctuaire…',
       'player-recovered': 'Retour au sanctuaire',
+      'first-session-advanced': 'Prologue · étape suivante',
+      'first-session-skipped': 'Séquence passée',
+      'first-session-replay': 'Séquence prête à être rejouée',
     };
     const label = labels[feedback.type];
     if (!label) return;
@@ -147,6 +186,7 @@ export function mountGameHud(root, config, handlers = {}) {
       bossWarning.textContent = boss.pendingDamageAt > now ? 'Télégraphe actif — éloignez-vous' : '';
     }
 
+    renderGuide(state);
     quest.textContent = questText(state, config);
     renderInventory(state);
     renderFeedback(state);
@@ -166,6 +206,9 @@ export function mountGameHud(root, config, handlers = {}) {
     render,
     unmount() {
       interactButton.removeEventListener('pointerdown', onInteract);
+      guideAdvance.removeEventListener('pointerdown', onGuideAdvance);
+      guideSkip.removeEventListener('pointerdown', onGuideSkip);
+      guideReplay.removeEventListener('pointerdown', onGuideReplay);
       inventory.removeEventListener('pointerdown', onInventoryClick);
       root.replaceChildren();
     },
