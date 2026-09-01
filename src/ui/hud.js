@@ -15,50 +15,66 @@ function questText(state, config) {
   return `${quest.title} · Terminée`;
 }
 
+function feedbackPresentation(feedback) {
+  const definitions = {
+    'level-up': { label: `Niveau ${feedback.level} atteint !`, tone: 'reward' },
+    'quest-accepted': { label: 'Quête acceptée', tone: 'objective' },
+    'quest-completed': { label: 'Quête terminée · récompenses reçues', tone: 'reward' },
+    'boss-telegraph': { label: feedback.pattern === 'nova' ? '⚠ NOVA DU GARDIEN' : '⚠ FRAPPE DU GARDIEN', tone: 'danger' },
+    'boss-victory': { label: 'Gardien vaincu ! Récompense finale obtenue.', tone: 'reward' },
+    'player-defeated': { label: 'Vous êtes tombé · retour au sanctuaire…', tone: 'danger' },
+    'player-recovered': { label: 'Retour au sanctuaire', tone: 'objective' },
+    'first-session-advanced': { label: 'Prologue · étape suivante', tone: 'objective' },
+    'first-session-skipped': { label: 'Séquence passée', tone: 'neutral' },
+    'first-session-replay': { label: 'Séquence prête à être rejouée', tone: 'objective' },
+  };
+  return definitions[feedback.type] ?? null;
+}
+
 export function mountGameHud(root, config, handlers = {}) {
   const shell = document.createElement('div');
   shell.className = 'game-hud';
   shell.innerHTML = `
-    <section class="hud-status" aria-label="Statut du personnage">
-      <div class="hud-title-row"><strong>${config.codename}</strong><span>Lv. <b data-level>1</b></span></div>
+    <section class="hud-status ui-panel" aria-label="Statut du personnage">
+      <div class="hud-title-row"><strong>${config.codename}</strong><span class="ui-badge">Lv. <b data-level>1</b></span></div>
       <div class="hud-bar hp"><span data-hp-fill></span><em data-hp-label></em></div>
       <div class="hud-bar mana"><span data-mana-fill></span><em data-mana-label></em></div>
       <div class="hud-meta"><span>XP <b data-xp>0</b></span><span>ATQ <b data-attack>0</b> · DEF <b data-defense>0</b></span></div>
     </section>
-    <section class="hud-target" data-target-card aria-live="polite">
-      <span>Cible</span><strong data-target-name>Aucune</strong><small data-target-hp></small>
+    <section class="hud-target ui-panel ui-panel--compact" data-target-card aria-live="polite">
+      <span class="ui-kicker">Cible</span><strong data-target-name>Aucune</strong><small data-target-hp></small>
     </section>
-    <section class="boss-bar" data-boss-bar hidden>
+    <section class="boss-bar ui-panel ui-panel--danger" data-boss-bar data-ui-state="ready" hidden>
       <div><strong data-boss-name></strong><span data-boss-phase></span></div>
       <div class="hud-bar boss"><span data-boss-fill></span><em data-boss-hp></em></div>
-      <small data-boss-warning></small>
+      <small class="ui-danger-text" data-boss-warning></small>
     </section>
-    <section class="guide-panel" data-guide aria-live="polite">
-      <header><span data-guide-kind>PROLOGUE</span><b data-guide-progress></b></header>
+    <section class="guide-panel ui-panel ui-panel--objective" data-guide data-ui-state="objective" aria-live="polite">
+      <header><span class="ui-kicker" data-guide-kind>PROLOGUE</span><b class="ui-badge" data-guide-progress></b></header>
       <strong data-guide-title></strong>
       <p data-guide-objective></p>
       <div class="guide-actions">
-        <button type="button" data-guide-advance>Continuer</button>
-        <button type="button" data-guide-skip>Passer</button>
-        <button type="button" data-guide-replay>Rejouer</button>
+        <button class="ui-button ui-button--primary" type="button" data-guide-advance>Continuer</button>
+        <button class="ui-button ui-button--ghost" type="button" data-guide-skip>Passer</button>
+        <button class="ui-button ui-button--ghost" type="button" data-guide-replay>Rejouer</button>
       </div>
     </section>
-    <section class="quest-panel"><strong>Quête</strong><span data-quest></span></section>
-    <section class="inventory-panel">
-      <header><strong>Sac</strong><span data-inventory-count></span></header>
+    <section class="quest-panel ui-panel ui-panel--compact"><strong class="ui-kicker">Quête</strong><span data-quest></span></section>
+    <section class="inventory-panel ui-panel">
+      <header><strong class="ui-kicker">Sac</strong><span class="ui-badge" data-inventory-count></span></header>
       <div data-inventory></div>
     </section>
-    <section class="hud-help">WASD / flèches · Espace · 1–4 · E interagir</section>
-    <button class="interact-button" data-interact type="button">Interagir <small>E</small></button>
+    <section class="hud-help ui-panel ui-panel--muted">WASD / flèches · Espace · 1–4 · E interagir</section>
+    <button class="interact-button ui-button ui-button--secondary" data-interact type="button">Interagir <small>E</small></button>
     <div class="move-stick" data-joystick aria-label="Joystick de déplacement"><span></span></div>
     <section class="action-dock" aria-label="Compétences">
       ${Object.values(config.gameplay.actions).map((action) => `
-        <button class="action-button" data-action="${action.id}" type="button">
+        <button class="action-button ui-button ui-button--skill" data-action="${action.id}" data-ui-state="ready" type="button" aria-label="${action.label}">
           <span>${action.label}</span><small>${action.id === 'basic' ? 'ATK' : action.id.replace('skill', '')}</small><i data-cooldown></i>
         </button>
       `).join('')}
     </section>
-    <div class="feedback-toast" data-feedback></div>
+    <div class="feedback-toast ui-panel" data-feedback data-ui-state="neutral"></div>
   `;
   root.replaceChildren(shell);
 
@@ -84,6 +100,7 @@ export function mountGameHud(root, config, handlers = {}) {
   const bossFill = shell.querySelector('[data-boss-fill]');
   const bossHp = shell.querySelector('[data-boss-hp]');
   const bossWarning = shell.querySelector('[data-boss-warning]');
+  const guidePanel = shell.querySelector('[data-guide]');
   const guideKind = shell.querySelector('[data-guide-kind]');
   const guideProgress = shell.querySelector('[data-guide-progress]');
   const guideTitle = shell.querySelector('[data-guide-title]');
@@ -121,13 +138,16 @@ export function mountGameHud(root, config, handlers = {}) {
       const item = config.gameplay.items[instance.itemId];
       const equipped = state.equipment[item.slot] === instance.instanceId;
       const statText = Object.entries(item.stats).map(([key, value]) => `${key === 'attack' ? 'ATQ' : 'DEF'} +${value}`).join(' · ');
-      return `<button type="button" class="inventory-item rarity-${item.rarity}${equipped ? ' equipped' : ''}" data-equip="${instance.instanceId}"><strong>${item.name}</strong><small>${statText}${equipped ? ' · ÉQUIPÉ' : ''}</small></button>`;
-    }).join('') : '<p class="inventory-empty">Aucun objet</p>';
+      return `<button type="button" class="inventory-item ui-button ui-button--inventory rarity-${item.rarity}${equipped ? ' equipped' : ''}" data-ui-state="${equipped ? 'reward' : 'ready'}" data-equip="${instance.instanceId}"><strong>${item.name}</strong><small>${statText}${equipped ? ' · ÉQUIPÉ' : ''}</small></button>`;
+    }).join('') : '<p class="inventory-empty ui-muted">Aucun objet</p>';
   }
 
   function renderGuide(state) {
     const guide = getFirstSessionView(state, config.gameplay);
-    guideKind.textContent = guide.kind === 'boss' ? 'OBJECTIF MAJEUR' : guide.kind === 'presentation' ? 'RÉCIT' : 'PROLOGUE';
+    const isDanger = guide.kind === 'boss';
+    const isReward = guide.kind === 'reward' || guide.kind === 'complete';
+    guidePanel.dataset.uiState = isDanger ? 'danger' : isReward ? 'reward' : 'objective';
+    guideKind.textContent = isDanger ? 'OBJECTIF MAJEUR' : guide.kind === 'presentation' ? 'RÉCIT' : isReward ? 'RÉCOMPENSE' : 'PROLOGUE';
     guideProgress.textContent = guide.progressLabel;
     guideTitle.textContent = guide.title;
     guideObjective.textContent = guide.replayRequested ? `${guide.objective} · Relecture demandée` : guide.objective;
@@ -141,21 +161,10 @@ export function mountGameHud(root, config, handlers = {}) {
     const key = feedback ? `${feedback.type}:${feedback.at}:${feedback.actionId ?? ''}:${feedback.stepId ?? ''}` : '';
     if (!feedback || key === lastFeedbackKey) return;
     lastFeedbackKey = key;
-    const labels = {
-      'level-up': `Niveau ${feedback.level} atteint !`,
-      'quest-accepted': 'Quête acceptée',
-      'quest-completed': 'Quête terminée · récompenses reçues',
-      'boss-telegraph': feedback.pattern === 'nova' ? '⚠ NOVA DU GARDIEN' : '⚠ FRAPPE DU GARDIEN',
-      'boss-victory': 'Gardien vaincu ! Récompense finale obtenue.',
-      'player-defeated': 'Vous êtes tombé · retour au sanctuaire…',
-      'player-recovered': 'Retour au sanctuaire',
-      'first-session-advanced': 'Prologue · étape suivante',
-      'first-session-skipped': 'Séquence passée',
-      'first-session-replay': 'Séquence prête à être rejouée',
-    };
-    const label = labels[feedback.type];
-    if (!label) return;
-    feedbackToast.textContent = label;
+    const presentation = feedbackPresentation(feedback);
+    if (!presentation) return;
+    feedbackToast.textContent = presentation.label;
+    feedbackToast.dataset.uiState = presentation.tone;
     feedbackToast.classList.add('visible');
     setTimeout(() => feedbackToast.classList.remove('visible'), 1500);
   }
@@ -172,6 +181,7 @@ export function mountGameHud(root, config, handlers = {}) {
 
     const target = state.enemies.find((enemy) => enemy.id === state.targetId && enemy.state !== 'dead');
     targetCard.classList.toggle('empty', !target);
+    targetCard.dataset.uiState = target?.isBoss ? 'danger' : target ? 'objective' : 'neutral';
     targetName.textContent = target?.name ?? 'Aucune';
     targetHp.textContent = target ? `${Math.ceil(target.hp)} / ${target.maxHp} PV` : 'Approchez-vous d’un ennemi';
 
@@ -179,11 +189,14 @@ export function mountGameHud(root, config, handlers = {}) {
     const showBoss = boss && (boss.state !== 'idle' || state.targetId === boss.id || state.bossVictory);
     bossBar.hidden = !showBoss;
     if (boss && showBoss) {
+      const telegraphActive = boss.pendingDamageAt > now;
+      const dangerous = telegraphActive || boss.phase === 'enraged';
+      bossBar.dataset.uiState = state.bossVictory ? 'reward' : dangerous ? 'danger' : 'ready';
       bossName.textContent = boss.name;
       bossPhase.textContent = state.bossVictory ? 'Vaincu' : boss.phase === 'enraged' ? 'ENRAGÉ' : 'Phase I';
       bossFill.style.width = `${percent(boss.hp, boss.maxHp)}%`;
       bossHp.textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
-      bossWarning.textContent = boss.pendingDamageAt > now ? 'Télégraphe actif — éloignez-vous' : '';
+      bossWarning.textContent = telegraphActive ? 'Télégraphe actif — éloignez-vous' : '';
     }
 
     renderGuide(state);
@@ -194,9 +207,16 @@ export function mountGameHud(root, config, handlers = {}) {
     for (const [actionId, button] of Object.entries(actionButtons)) {
       const action = config.gameplay.actions[actionId];
       const remaining = Math.max(0, (state.cooldowns[actionId] ?? 0) - now);
-      const unavailable = remaining > 0 || state.player.mana < action.manaCost || state.player.hp <= 0;
+      const coolingDown = remaining > 0;
+      const outOfMana = state.player.mana < action.manaCost;
+      const defeated = state.player.hp <= 0;
+      const unavailable = coolingDown || outOfMana || defeated;
+      button.disabled = unavailable;
+      button.setAttribute('aria-disabled', String(unavailable));
+      button.dataset.uiState = coolingDown ? 'cooldown' : unavailable ? 'disabled' : 'ready';
+      button.setAttribute('aria-label', coolingDown ? `${action.label}, recharge ${remaining.toFixed(1)} secondes` : outOfMana ? `${action.label}, mana insuffisant` : action.label);
       button.classList.toggle('unavailable', unavailable);
-      button.querySelector('[data-cooldown]').textContent = remaining > 0 ? remaining.toFixed(1) : '';
+      button.querySelector('[data-cooldown]').textContent = coolingDown ? remaining.toFixed(1) : '';
     }
   }
 
@@ -217,15 +237,15 @@ export function mountGameHud(root, config, handlers = {}) {
 
 export function mountBootHud(root, config) {
   const card = document.createElement('section');
-  card.className = 'boot-card';
-  card.innerHTML = `<h1>${config.codename}</h1><p>Chargement du prototype jouable…</p><span class="boot-badge">${config.version} · prototype original</span>`;
+  card.className = 'boot-card ui-panel ui-panel--objective';
+  card.innerHTML = `<h1>${config.codename}</h1><p>Chargement du prototype jouable…</p><span class="boot-badge ui-badge">${config.version} · prototype original</span>`;
   root.replaceChildren(card);
   return () => root.replaceChildren();
 }
 
 export function mountFatalHud(root, error) {
   const card = document.createElement('section');
-  card.className = 'boot-card fatal-card';
+  card.className = 'boot-card fatal-card ui-panel ui-panel--danger';
   card.innerHTML = `<h1>Erreur de démarrage</h1><p>${String(error?.message ?? error)}</p>`;
   root.replaceChildren(card);
 }
