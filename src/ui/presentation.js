@@ -12,6 +12,7 @@ import {
   setLoadingPhase,
 } from '../core/session-flow.js';
 import { inspectLocalSave } from '../data/local-save.js';
+import { playIntroPresentation } from './intro-presentation.js';
 
 const QUALITY_OPTIONS = ['auto', 'low', 'medium', 'high'];
 
@@ -167,6 +168,28 @@ export function mountPresentation(root, { app, buildLabel = 'web-preview' } = {}
     else root.innerHTML = renderTitle(flow, quality);
   }
 
+  async function completeStartupPresentation() {
+    let step = app.getFirstSessionView();
+    if (step?.id === 'title') {
+      app.completeFirstSessionPresentation('title');
+      step = app.getFirstSessionView();
+    }
+
+    if (step?.id === 'intro') {
+      if (app.state.narrative?.introComplete) {
+        app.completeFirstSessionPresentation('intro');
+      } else {
+        const params = new URLSearchParams(globalThis.location?.search ?? '');
+        await playIntroPresentation(root, {
+          app,
+          autoSkip: params.get('intro') === 'skip',
+        });
+      }
+    }
+
+    if (!app.isGameplayEnabled()) app.setGameplayEnabled(true);
+  }
+
   async function launch(intent) {
     if (committed) return;
     committed = true;
@@ -175,12 +198,14 @@ export function mountPresentation(root, { app, buildLabel = 'web-preview' } = {}
       await app.start({
         restoreSave: intent === 'continue',
         settingsOverride: { quality },
+        gameplayEnabled: false,
         onPhase(phaseId) {
           setLoadingPhase(flow, phaseId);
           render();
         },
       });
       if (intent === 'new-game') app.persist();
+      await completeStartupPresentation();
       flow.phase = SESSION_PHASES.READY;
       window.dispatchEvent(new CustomEvent('jta:session-ready', {
         detail: { renderer: app.state.renderer ?? 'unknown', intent },
@@ -192,6 +217,7 @@ export function mountPresentation(root, { app, buildLabel = 'web-preview' } = {}
       }, 320);
     } catch {
       committed = false;
+      app.setGameplayEnabled(false);
       failSessionFlow(flow);
       render();
     }
