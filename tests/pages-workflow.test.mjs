@@ -22,6 +22,13 @@ test('Pages workflow runs all quality gates before deploy', () => {
   assert.ok(configureIndex < deployIndex);
 });
 
+test('pull requests run quality gates without deploying Pages', () => {
+  assert.match(workflow, /pull_request:\s*\n\s*branches: \[main\]/);
+  const deployGuards = workflow.match(/if: github\.event_name != 'pull_request'/g) ?? [];
+  assert.ok(deployGuards.length >= 4, 'configure, upload, deploy and public smoke must be guarded on pull requests');
+  assert.match(workflow, /group: pages-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}/);
+});
+
 test('Pages workflow smoke tests the deployed public URL after deploy', () => {
   const deployIndex = workflow.indexOf('actions/deploy-pages@v4');
   const publicSmokeIndex = workflow.indexOf('public-smoke:');

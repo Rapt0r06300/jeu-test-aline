@@ -1,3 +1,4 @@
+import { restoreFirstSessionState } from './first-session.js';
 import { recomputePlayerStats } from './state.js';
 
 export const SAVE_VERSION = 1;
@@ -22,6 +23,7 @@ export function createSaveSnapshot(state) {
     bossRewardGranted: Boolean(state.bossRewardGranted),
     nextItemSerial: state.nextItemSerial,
     settings: cloneRecord(state.settings ?? { quality: 'auto' }),
+    firstSession: state.firstSession ? cloneRecord(state.firstSession) : null,
   };
 }
 
@@ -92,6 +94,7 @@ export function applySaveSnapshot(state, snapshot, config) {
   state.bossRewardGranted = Boolean(snapshot.bossRewardGranted);
   state.nextItemSerial = Math.max(1, Math.floor(Number(snapshot.nextItemSerial) || 1));
   state.settings = { quality: ['auto', 'low', 'medium', 'high'].includes(snapshot.settings?.quality) ? snapshot.settings.quality : 'auto' };
+  restoreFirstSessionState(state, snapshot.firstSession, config);
   recomputePlayerStats(state, config);
   state.player.hp = state.player.maxHp;
   state.player.mana = state.player.maxMana;

@@ -2,6 +2,13 @@ import { APP_CONFIG } from '../data/config.js';
 import { loadLocalSave, saveLocalState } from '../data/local-save.js';
 import { detectBrowserQuality } from '../data/quality.js';
 import {
+  advanceFirstSession,
+  ensureFirstSessionState,
+  requestFirstSessionReplay,
+  skipFirstSessionStep,
+  syncFirstSession,
+} from '../gameplay/first-session.js';
+import {
   clearMoveIntent,
   createInitialGameState,
   equipItem,
@@ -18,6 +25,7 @@ export function createApp({ sceneRoot, uiRoot }) {
   const state = createInitialGameState(APP_CONFIG.gameplay);
   state.settings = { quality: 'auto' };
   state.runtimeQuality = 'medium';
+  ensureFirstSessionState(state, APP_CONFIG.gameplay);
   let scene = null;
   let hud = null;
   let input = null;
@@ -38,14 +46,37 @@ export function createApp({ sceneRoot, uiRoot }) {
     saveLocalState(state);
   }
 
+  function syncDirector() {
+    return syncFirstSession(state, APP_CONFIG.gameplay).changed;
+  }
+
   function handleInteract() {
     const result = interact(state, APP_CONFIG.gameplay);
-    if (result.ok) persist();
+    const directorChanged = syncDirector();
+    if (result.ok || directorChanged) persist();
     refresh();
   }
 
   function handleEquip(instanceId) {
     const result = equipItem(state, instanceId, APP_CONFIG.gameplay);
+    if (result.ok) persist();
+    refresh();
+  }
+
+  function handleFirstSessionAdvance() {
+    const result = advanceFirstSession(state, APP_CONFIG.gameplay);
+    if (result.ok) persist();
+    refresh();
+  }
+
+  function handleFirstSessionSkip() {
+    const result = skipFirstSessionStep(state, APP_CONFIG.gameplay);
+    if (result.ok) persist();
+    refresh();
+  }
+
+  function handleFirstSessionReplay() {
+    const result = requestFirstSessionReplay(state, APP_CONFIG.gameplay);
     if (result.ok) persist();
     refresh();
   }
@@ -68,6 +99,8 @@ export function createApp({ sceneRoot, uiRoot }) {
     const token = ++startToken;
     state.phase = 'loading';
     loadLocalSave(state, APP_CONFIG.gameplay);
+    ensureFirstSessionState(state, APP_CONFIG.gameplay);
+    syncDirector();
     const requestedQuality = state.settings?.quality ?? 'auto';
     state.runtimeQuality = requestedQuality === 'auto' ? detectBrowserQuality() : requestedQuality;
 
@@ -78,13 +111,22 @@ export function createApp({ sceneRoot, uiRoot }) {
         return;
       }
       scene = nextScene;
-      hud = mountGameHud(uiRoot, APP_CONFIG, { onInteract: handleInteract, onEquip: handleEquip });
+      hud = mountGameHud(uiRoot, APP_CONFIG, {
+        onInteract: handleInteract,
+        onEquip: handleEquip,
+        onFirstSessionAdvance: handleFirstSessionAdvance,
+        onFirstSessionSkip: handleFirstSessionSkip,
+        onFirstSessionReplay: handleFirstSessionReplay,
+      });
       input = createInputController({
         joystick: hud.joystick,
         actionButtons: hud.actionButtons,
         actionConfig: APP_CONFIG.gameplay.actions,
         onAction(actionId) {
-          tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
+          const result = tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
+          const directorChanged = syncDirector();
+          if (result.ok && directorChanged) persist();
+          else if (directorChanged) persist();
           refresh();
         },
         onInteract: handleInteract,
