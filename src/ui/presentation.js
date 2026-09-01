@@ -11,7 +11,7 @@ import {
   requestSessionIntent,
   setLoadingPhase,
 } from '../core/session-flow.js';
-import { clearLocalSave, inspectLocalSave } from '../data/local-save.js';
+import { inspectLocalSave } from '../data/local-save.js';
 
 const QUALITY_OPTIONS = ['auto', 'low', 'medium', 'high'];
 
@@ -109,7 +109,7 @@ function renderConfirmation(flow) {
       <div class="title-dialog ui-panel ui-panel--danger" role="dialog" aria-modal="true" aria-labelledby="new-game-title">
         <p class="ui-kicker">Confirmation</p>
         <h2 id="new-game-title">${recovery ? 'Réinitialiser la sauvegarde illisible ?' : 'Commencer une nouvelle partie ?'}</h2>
-        <p>${recovery ? "La sauvegarde actuelle ne peut pas être chargée. Elle ne sera supprimée qu'après votre confirmation." : 'La progression sauvegardée sera remplacée uniquement lorsque la nouvelle session sera lancée.'}</p>
+        <p>${recovery ? "La sauvegarde actuelle ne peut pas être chargée. Elle ne sera remplacée qu'après votre confirmation et un démarrage réussi." : 'La progression sauvegardée sera remplacée uniquement lorsque la nouvelle session aura démarré correctement.'}</p>
         <div class="title-dialog-actions">
           ${button('Annuler', 'new-game-cancel', 'ghost')}
           ${button('Confirmer', 'new-game-confirm', 'danger')}
@@ -170,15 +170,6 @@ export function mountPresentation(root, { app, buildLabel = 'web-preview' } = {}
   async function launch(intent) {
     if (committed) return;
     committed = true;
-    if (intent === 'new-game') {
-      const cleared = clearLocalSave();
-      if (!cleared.ok) {
-        committed = false;
-        failSessionFlow(flow, 'La sauvegarde précédente ne peut pas être réinitialisée sur cet appareil.');
-        render();
-        return;
-      }
-    }
 
     try {
       await app.start({
@@ -189,6 +180,11 @@ export function mountPresentation(root, { app, buildLabel = 'web-preview' } = {}
           render();
         },
       });
+      if (intent === 'new-game') app.persist();
+      flow.phase = SESSION_PHASES.READY;
+      window.dispatchEvent(new CustomEvent('jta:session-ready', {
+        detail: { renderer: app.state.renderer ?? 'unknown', intent },
+      }));
       root.classList.add('presentation-root--leaving');
       window.setTimeout(() => {
         root.hidden = true;
