@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 const registryUrl = new URL('../docs/visual-benchmark-clean-room.json', import.meta.url);
 const registry = JSON.parse(await readFile(registryUrl, 'utf8'));
 
-const requiredCategories = new Set(['world', 'character', 'vfx', 'lighting', 'camera', 'ui']);
+const requiredCategories = new Set(['world', 'character', 'animation', 'vfx', 'lighting', 'camera', 'ui']);
 const forbiddenProductionTerms = [
   'copy the asset',
   'trace the composition',
@@ -22,13 +22,15 @@ test('visual benchmark contains at least 30 public references across required ax
   }
 });
 
-test('every benchmark reference is traceable and clean-room scoped', () => {
+test('every benchmark reference is dated, traceable and clean-room scoped', () => {
   const ids = new Set();
   for (const reference of registry.references) {
     assert.match(reference.id, /^R\d{2,}$/);
     assert.ok(!ids.has(reference.id), `duplicate id ${reference.id}`);
     ids.add(reference.id);
     assert.match(reference.url, /^https:\/\//);
+    assert.match(reference.consultedAt, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(reference.consultedAt, registry.consultedAt);
     assert.ok(reference.sourceType);
     assert.ok(reference.context);
     assert.ok(reference.abstractObservation.length >= 40);
