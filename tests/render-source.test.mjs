@@ -13,9 +13,14 @@ test('3D renderer defines resize and disposal lifecycle', () => {
   assert.match(three, /renderer\.dispose\(\)/);
 });
 
-test('fallback renderer protects against CDN failure', () => {
+test('fallback renderer protects against CDN failure and stalls', () => {
+  assert.match(scene, /DEFAULT_THREE_BOOT_TIMEOUT_MS\s*=\s*4000/);
+  assert.match(scene, /Promise\.race/);
+  assert.match(scene, /setTimeout/);
+  assert.match(scene, /clearTimeout/);
   assert.match(scene, /catch \(error\)/);
   assert.match(scene, /createFallbackScene/);
+  assert.match(scene, /unavailable or too slow/);
   assert.match(fallback, /requestAnimationFrame/);
   assert.match(fallback, /cancelAnimationFrame/);
 });
