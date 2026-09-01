@@ -1,0 +1,119 @@
+.guide-panel {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(184px, calc(env(safe-area-inset-top) + 172px));
+  width: min(330px, calc(100vw - 24px));
+  padding: 12px 13px;
+  border: 1px solid rgba(132, 215, 255, 0.34);
+  border-radius: 14px;
+  color: #edf8ff;
+  background: linear-gradient(145deg, rgba(8, 25, 36, 0.9), rgba(9, 18, 29, 0.82));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+}
+
+.guide-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #9fdcf5;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.guide-panel > strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.guide-panel p {
+  margin: 5px 0 0;
+  color: #c8dce8;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+  pointer-events: auto;
+}
+
+.guide-actions button {
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid rgba(172, 224, 255, 0.3);
+  border-radius: 999px;
+  color: #edf9ff;
+  background: rgba(26, 67, 86, 0.78);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.guide-actions button:first-child {
+  border-color: rgba(255, 215, 139, 0.48);
+  color: #fff6de;
+  background: linear-gradient(145deg, rgba(117, 83, 35, 0.9), rgba(66, 44, 22, 0.88));
+}
+
+.guide-actions button[hidden] {
+  display: none;
+}
+
+.guide-actions button:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 700px) {
+  .guide-panel {
+    top: max(208px, calc(env(safe-area-inset-top) + 196px));
+    width: min(270px, calc(100vw - 24px));
+    padding: 10px 11px;
+  }
+
+  .guide-panel p {
+    font-size: 10px;
+  }
+
+  .guide-actions button {
+    min-height: 36px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 370px) {
+  .guide-panel {
+    top: 202px;
+    width: 230px;
+  }
+}
+
+@media (max-height: 460px) and (orientation: landscape) {
+  .guide-panel {
+    top: 66px;
+    left: max(8px, env(safe-area-inset-left));
+    width: 220px;
+    padding: 8px 9px;
+  }
+
+  .guide-panel p {
+    margin-top: 3px;
+    font-size: 9px;
+  }
+
+  .guide-actions {
+    margin-top: 6px;
+  }
+
+  .guide-actions button {
+    min-height: 32px;
+  }
+}
