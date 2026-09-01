@@ -4,6 +4,7 @@ import { detectBrowserQuality } from '../data/quality.js';
 import {
   advanceFirstSession,
   ensureFirstSessionState,
+  getFirstSessionView,
   requestFirstSessionReplay,
   skipFirstSessionStep,
   syncFirstSession,
@@ -39,6 +40,7 @@ export function createApp({ sceneRoot, uiRoot }) {
   let hud = null;
   let input = null;
   let started = false;
+  let gameplayEnabled = true;
   let startToken = 0;
   let gameRaf = 0;
   let lastFrameMs = 0;
@@ -59,7 +61,26 @@ export function createApp({ sceneRoot, uiRoot }) {
     return syncFirstSession(state, APP_CONFIG.gameplay).changed;
   }
 
+  function setGameplayEnabled(enabled) {
+    gameplayEnabled = Boolean(enabled);
+    if (!gameplayEnabled) clearMoveIntent(state);
+    refresh();
+    return gameplayEnabled;
+  }
+
+  function completeFirstSessionPresentation(expectedStepId) {
+    const view = getFirstSessionView(state, APP_CONFIG.gameplay);
+    if (view?.id !== expectedStepId) return { ok: false, reason: 'unexpected-step', stepId: view?.id ?? null };
+    const result = advanceFirstSession(state, APP_CONFIG.gameplay);
+    if (result.ok) {
+      persist();
+      refresh();
+    }
+    return result;
+  }
+
   function handleInteract() {
+    if (!gameplayEnabled) return;
     const result = interact(state, APP_CONFIG.gameplay);
     const directorChanged = syncDirector();
     if (result.ok || directorChanged) persist();
@@ -67,24 +88,28 @@ export function createApp({ sceneRoot, uiRoot }) {
   }
 
   function handleEquip(instanceId) {
+    if (!gameplayEnabled) return;
     const result = equipItem(state, instanceId, APP_CONFIG.gameplay);
     if (result.ok) persist();
     refresh();
   }
 
   function handleFirstSessionAdvance() {
+    if (!gameplayEnabled) return;
     const result = advanceFirstSession(state, APP_CONFIG.gameplay);
     if (result.ok) persist();
     refresh();
   }
 
   function handleFirstSessionSkip() {
+    if (!gameplayEnabled) return;
     const result = skipFirstSessionStep(state, APP_CONFIG.gameplay);
     if (result.ok) persist();
     refresh();
   }
 
   function handleFirstSessionReplay() {
+    if (!gameplayEnabled) return;
     const result = requestFirstSessionReplay(state, APP_CONFIG.gameplay);
     if (result.ok) persist();
     refresh();
@@ -95,16 +120,29 @@ export function createApp({ sceneRoot, uiRoot }) {
     const now = frameMs / 1000;
     const dt = lastFrameMs ? Math.min(0.05, (frameMs - lastFrameMs) / 1000) : 0;
     lastFrameMs = frameMs;
-    const movement = input?.sampleMovement() ?? { x: 0, z: 0 };
-    setMoveIntent(state, movement.x, movement.z);
-    stepGame(state, dt, now, APP_CONFIG.gameplay);
-    refresh(now);
+
+    if (gameplayEnabled) {
+      const movement = input?.sampleMovement() ?? { x: 0, z: 0 };
+      setMoveIntent(state, movement.x, movement.z);
+      stepGame(state, dt, now, APP_CONFIG.gameplay);
+      refresh(now);
+    } else {
+      clearMoveIntent(state);
+      refresh(state.time);
+    }
+
     gameRaf = requestAnimationFrame(runGameFrame);
   }
 
-  async function start({ restoreSave = true, settingsOverride = null, onPhase = () => {} } = {}) {
+  async function start({
+    restoreSave = true,
+    settingsOverride = null,
+    onPhase = () => {},
+    gameplayEnabled: startGameplayEnabled = true,
+  } = {}) {
     if (started) return;
     started = true;
+    gameplayEnabled = Boolean(startGameplayEnabled);
     const token = ++startToken;
     state.phase = 'loading';
     onPhase('config');
@@ -148,6 +186,7 @@ export function createApp({ sceneRoot, uiRoot }) {
         actionButtons: hud.actionButtons,
         actionConfig: APP_CONFIG.gameplay.actions,
         onAction(actionId) {
+          if (!gameplayEnabled) return;
           tryAction(state, actionId, state.time, APP_CONFIG.gameplay);
           if (syncDirector()) persist();
           refresh();
@@ -175,6 +214,7 @@ export function createApp({ sceneRoot, uiRoot }) {
     if (!started) return;
     persist();
     started = false;
+    gameplayEnabled = false;
     startToken++;
     if (gameRaf) cancelAnimationFrame(gameRaf);
     if (autosaveTimer) clearInterval(autosaveTimer);
@@ -194,5 +234,16 @@ export function createApp({ sceneRoot, uiRoot }) {
     state.phase = 'stopped';
   }
 
-  return { start, stop, state, config: APP_CONFIG, persist, getScene: () => scene };
+  return {
+    start,
+    stop,
+    state,
+    config: APP_CONFIG,
+    persist,
+    setGameplayEnabled,
+    isGameplayEnabled: () => gameplayEnabled,
+    completeFirstSessionPresentation,
+    getFirstSessionView: () => getFirstSessionView(state, APP_CONFIG.gameplay),
+    getScene: () => scene,
+  };
 }
