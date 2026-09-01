@@ -102,24 +102,40 @@ export function createApp({ sceneRoot, uiRoot }) {
     gameRaf = requestAnimationFrame(runGameFrame);
   }
 
-  async function start() {
+  async function start({ restoreSave = true, settingsOverride = null, onPhase = () => {} } = {}) {
     if (started) return;
     started = true;
     const token = ++startToken;
     state.phase = 'loading';
-    loadLocalSave(state, APP_CONFIG.gameplay);
+    onPhase('config');
+
+    if (restoreSave) {
+      onPhase('save');
+      const loaded = loadLocalSave(state, APP_CONFIG.gameplay);
+      if (!loaded.ok) {
+        started = false;
+        state.phase = 'stopped';
+        throw new Error(`Sauvegarde impossible à charger: ${loaded.reason}`);
+      }
+    } else {
+      onPhase('save');
+    }
+
+    if (settingsOverride?.quality) state.settings = { ...state.settings, quality: settingsOverride.quality };
     ensureFirstSessionState(state, APP_CONFIG.gameplay);
     syncDirector();
     const requestedQuality = state.settings?.quality ?? 'auto';
     state.runtimeQuality = requestedQuality === 'auto' ? detectBrowserQuality() : requestedQuality;
 
     try {
+      onPhase('renderer');
       const nextScene = await createSceneSurface(sceneRoot, getRuntimeSceneOptions(state.runtimeQuality));
       if (!started || token !== startToken) {
         nextScene.dispose();
         return;
       }
       scene = nextScene;
+      onPhase('scene');
       hud = mountGameHud(uiRoot, APP_CONFIG, {
         onInteract: handleInteract,
         onEquip: handleEquip,
@@ -140,6 +156,7 @@ export function createApp({ sceneRoot, uiRoot }) {
       });
       state.phase = 'ready';
       state.renderer = scene.kind;
+      onPhase('ready');
       refresh(0);
       window.addEventListener('resize', onResize, { passive: true });
       window.addEventListener('orientationchange', onResize, { passive: true });
@@ -147,6 +164,7 @@ export function createApp({ sceneRoot, uiRoot }) {
       gameRaf = requestAnimationFrame(runGameFrame);
       autosaveTimer = window.setInterval(persist, 5000);
     } catch (error) {
+      started = false;
       state.phase = 'fatal';
       mountFatalHud(uiRoot, error);
       throw error;
