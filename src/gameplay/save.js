@@ -1,5 +1,7 @@
 import { restoreFirstSessionState } from './first-session.js';
 import { ensureNarrativeState } from './intro-sequence.js';
+import { ensurePrologueState, restorePrologueState } from './prologue.js';
+import { ensureGuidanceState, restoreGuidanceState } from './guidance.js';
 import { recomputePlayerStats } from './state.js';
 
 export const SAVE_VERSION = 1;
@@ -23,9 +25,11 @@ export function createSaveSnapshot(state) {
     bossVictory: Boolean(state.bossVictory),
     bossRewardGranted: Boolean(state.bossRewardGranted),
     nextItemSerial: state.nextItemSerial,
-    settings: cloneRecord(state.settings ?? { quality: 'auto' }),
+    settings: cloneRecord(state.settings ?? { quality: 'auto', guidance: 'complete' }),
     firstSession: state.firstSession ? cloneRecord(state.firstSession) : null,
     narrative: cloneRecord(ensureNarrativeState(state)),
+    prologue: cloneRecord(ensurePrologueState(state)),
+    guidance: cloneRecord(ensureGuidanceState(state)),
   };
 }
 
@@ -95,7 +99,9 @@ export function applySaveSnapshot(state, snapshot, config) {
   state.bossVictory = Boolean(snapshot.bossVictory);
   state.bossRewardGranted = Boolean(snapshot.bossRewardGranted);
   state.nextItemSerial = Math.max(1, Math.floor(Number(snapshot.nextItemSerial) || 1));
-  state.settings = { quality: ['auto', 'low', 'medium', 'high'].includes(snapshot.settings?.quality) ? snapshot.settings.quality : 'auto' };
+  const quality = ['auto', 'low', 'medium', 'high'].includes(snapshot.settings?.quality) ? snapshot.settings.quality : 'auto';
+  const guidance = ['complete', 'minimal', 'off'].includes(snapshot.settings?.guidance) ? snapshot.settings.guidance : 'complete';
+  state.settings = { quality, guidance };
   restoreFirstSessionState(state, snapshot.firstSession, config);
 
   const introWasCompletedByDirector = state.firstSession?.completedStepIds?.includes('intro') ?? false;
@@ -109,6 +115,8 @@ export function applySaveSnapshot(state, snapshot, config) {
     artifactClaimed: Boolean(savedNarrative.artifactClaimed),
   };
   ensureNarrativeState(state);
+  restorePrologueState(state, snapshot.prologue);
+  restoreGuidanceState(state, snapshot.guidance);
 
   recomputePlayerStats(state, config);
   state.player.hp = state.player.maxHp;
